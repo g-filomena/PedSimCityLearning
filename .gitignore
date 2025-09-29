@@ -24,4 +24,12 @@ hs_err_pid*
 replay_pid*
 
 /bin/
-/notebook/output/animation/
+/notebook/output/
+/target/
+/notebook/
+.settings/
+.m2/
+id_ed25519*
+src/main/resources/Paris/
+src/main/resources/London/
+src/main/resources/Barcelona/
