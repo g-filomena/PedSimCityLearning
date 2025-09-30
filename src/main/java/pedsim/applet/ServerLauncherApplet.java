@@ -11,7 +11,6 @@ public class ServerLauncherApplet {
       "C:\\Users\\gfilo\\OneDrive - The University of Liverpool\\Scripts\\pedsimcityLearning\\id_ed25519";
   private String server = "gabriele@gdsl1.liv.ac.uk";
 
-  // Now configurable as well
   private String projectDir = "/mnt/home/gabriele/PedSimCityLearning";
   private String mainClass = "pedsim.applet.PedSimCityApplet";
 
@@ -58,12 +57,17 @@ public class ServerLauncherApplet {
 
   // --- Run on server ---
   public void runOnServer(String argsString, PedSimCityApplet applet) {
-    String remoteCmd = "cd " + projectDir + " && " + "echo '>> pulling repo' && git pull && "
+    String remoteCmd = "echo '>> Checking Java version' && "
+        + "/usr/local/software/java/jdk-21.0.6/bin/java -version && "
+        + "/usr/local/software/java/jdk-21.0.6/bin/javac -version && " + "cd " + projectDir + " && "
+        + "echo '>> pulling repo' && git pull && "
         + "echo '>> compiling sources' && mkdir -p bin && "
         + "find src/main/java -name '*.java' > sources.txt && "
-        + "javac -d bin -cp 'bin:lib/*' @sources.txt && "
-        + "echo '>> running applet (headless)' && " + "java -cp 'bin:lib/*' " + mainClass
+        + "/usr/local/software/java/jdk-21.0.6/bin/javac -d bin -cp 'bin:lib/*' @sources.txt && "
+        + "echo '>> running applet (headless)' && "
+        + "/usr/local/software/java/jdk-21.0.6/bin/java -cp 'bin:lib/*' " + mainClass
         + " --headless " + argsString;
+
 
     try {
       ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, remoteCmd);
