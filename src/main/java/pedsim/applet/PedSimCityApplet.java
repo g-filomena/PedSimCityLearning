@@ -9,11 +9,15 @@ import java.awt.TextArea;
 import java.awt.TextField;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import pedsim.engine.Engine;
 import pedsim.engine.Environment;
 import pedsim.engine.Import;
+import pedsim.parameters.ParameterManager;
 import pedsim.parameters.Pars;
+import pedsim.utilities.ArgumentBuilder;
 import pedsim.utilities.LoggerUtil;
 import pedsim.utilities.StringEnum;
 
@@ -24,8 +28,8 @@ public class PedSimCityApplet extends Frame {
   private Choice cityName;
   private Button startButton;
   private Button runServerButton;
-  private Button configButton;
   private Button endButton;
+  private Button configButton;
   private TextField daysTextField;
   private TextField jobsTextField;
   private TextField populationTextField;
@@ -37,6 +41,9 @@ public class PedSimCityApplet extends Frame {
 
   private static final Logger logger = LoggerUtil.getLogger();
 
+  // -------------------
+  // Constructor (GUI setup)
+  // -------------------
   public PedSimCityApplet() {
     super("PedSimCity Applet");
     setLayout(null);
@@ -59,14 +66,14 @@ public class PedSimCityApplet extends Frame {
     add(daysTextField);
 
     Label populationLabel = new Label("Actual Population:");
-    populationTextField = new TextField(Integer.toString(Pars.population));
+    populationTextField = new TextField("100000");
     populationLabel.setBounds(10, 130, 120, 20);
     populationTextField.setBounds(190, 130, 100, 20);
     add(populationLabel);
     add(populationTextField);
 
     Label percentageLabel = new Label("% Represented by Agents:");
-    percentageTextField = new TextField(Double.toString(Pars.percentagePopulationAgent));
+    percentageTextField = new TextField("0.01");
     percentageLabel.setBounds(10, 160, 150, 20);
     percentageTextField.setBounds(190, 160, 100, 20);
     add(percentageLabel);
@@ -79,64 +86,61 @@ public class PedSimCityApplet extends Frame {
     add(nrJobsLabel);
     add(jobsTextField);
 
-    // Buttons
-    // Run Simulation (left, bottom row)
+    // --- Buttons ---
     startButton = new Button("Run Simulation");
-    startButton.setBounds(10, 330, 150, 50);
+    startButton.setBounds(10, 330, 120, 50);
     startButton.setBackground(new Color(0, 220, 0));
     add(startButton);
 
-    // Server Settings (right, top)
-    configButton = new Button("Server Settings");
-    configButton.setBounds(200, 270, 150, 40);
-    configButton.setBackground(new Color(200, 200, 0));
-    add(configButton);
-
-    // Run on Server (right, bottom row)
     runServerButton = new Button("Run on Server");
-    runServerButton.setBounds(200, 330, 150, 50);
+    runServerButton.setBounds(150, 330, 120, 50);
     runServerButton.setBackground(new Color(0, 150, 200));
     add(runServerButton);
 
     endButton = new Button("End Simulation");
     endButton.setBackground(Color.PINK);
 
-    // Log area
+    configButton = new Button("Server Settings");
+    configButton.setBounds(280, 280, 120, 40);
+    configButton.setBackground(new Color(200, 200, 0));
+    add(configButton);
+
+    // --- Log area ---
     logArea = new TextArea("", 10, 80, TextArea.SCROLLBARS_VERTICAL_ONLY);
     logArea.setEditable(false);
     logArea.setBounds(10, 400, 460, 80);
     add(logArea);
 
-    // Attach handlers
+    // --- Handlers ---
     ServerLauncherApplet serverLauncher = new ServerLauncherApplet();
     PedSimCityActionHandler handler = new PedSimCityActionHandler(this, serverLauncher);
 
     startButton.addActionListener(handler.runLocalListener());
     runServerButton.addActionListener(handler.runServerListener());
-    configButton.addActionListener(e -> {
-      serverLauncher.openConfigPanel();
-    });
-
+    configButton.addActionListener(e -> serverLauncher.openConfigPanel());
     endButton.addActionListener(handler.endListener());
 
-    // Redirect Logger to logArea
+    // Redirect logger output
     LoggerUtil.redirectToTextArea(logArea);
 
     setSize(500, 520);
     setVisible(true);
   }
 
-  // --- Simulation logic ---
+  // -------------------
+  // Simulation logic
+  // -------------------
   public void runSimulationLocal() throws Exception {
     importFiles();
-    appendLog("Running the ABM with " + Pars.numAgents + " agents for "
+    appendLog("Running ABM with " + Pars.numAgents + " agents for "
         + StringEnum.Learner.values().length + " scenarios.");
+
     Environment.prepare();
-    appendLog("Environment Prepared. About to Start Simulation");
+    appendLog("Environment prepared. Starting simulation...");
 
     Engine engine = new Engine();
     for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
-      appendLog("Executing Job nr.: " + jobNr);
+      appendLog("Executing Job: " + jobNr);
       engine.executeJob(jobNr);
     }
     appendLog("Simulation finished.");
@@ -157,12 +161,29 @@ public class PedSimCityApplet extends Frame {
     cityName.validate();
   }
 
-  // --- Logging ---
+  // -------------------
+  // Parameter collection
+  // -------------------
+  public Map<String, String> collectParameters() {
+    Map<String, String> params = new HashMap<>();
+    params.put("cityName", getCityName());
+    params.put("days", getDays());
+    params.put("population", getPopulation());
+    params.put("percentage", getPercentage());
+    params.put("jobs", getJobs());
+    return params;
+  }
+
+  // -------------------
+  // Logging
+  // -------------------
   public void appendLog(String msg) {
     logArea.append(msg + "\n");
   }
 
-  // --- Getters/setters for handler ---
+  // -------------------
+  // Getters/setters for handler
+  // -------------------
   public String getCityName() {
     return cityName.getSelectedItem();
   }
@@ -211,13 +232,34 @@ public class PedSimCityApplet extends Frame {
     return simulationThread;
   }
 
+  // -------------------
+  // Main entry point
+  // -------------------
   public static void main(String[] args) {
-    PedSimCityApplet applet = new PedSimCityApplet();
-    applet.addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosing(WindowEvent e) {
-        applet.dispose();
+    Map<String, String> params = ArgumentBuilder.parseArgs(args);
+    ParameterManager.setParameters(params);
+
+    if (params.containsKey("headless")) {
+      // Server execution path: skip GUI, just run simulation
+      try {
+        System.out.println("[SERVER] Running headless simulation...");
+        PedSimCityApplet dummy = new PedSimCityApplet();
+        dummy.setVisible(false); // don't show GUI
+        dummy.runSimulationLocal();
+        System.exit(0);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+        System.exit(1);
       }
-    });
+    } else {
+      // Normal GUI mode
+      PedSimCityApplet applet = new PedSimCityApplet();
+      applet.addWindowListener(new WindowAdapter() {
+        @Override
+        public void windowClosing(WindowEvent e) {
+          applet.dispose();
+        }
+      });
+    }
   }
 }
