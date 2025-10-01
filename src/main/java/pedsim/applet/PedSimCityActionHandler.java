@@ -1,10 +1,12 @@
 package pedsim.applet;
 
 import java.awt.event.ActionListener;
-import pedsim.parameters.Pars;
-import pedsim.parameters.TimePars;
-import pedsim.utilities.ArgumentBuilder;
+import pedsim.parameters.ParameterManager;
+import pedsim.utilities.LoggerUtil;
 
+/**
+ * Handles button actions for PedSimCityApplet (local + server execution).
+ */
 public class PedSimCityActionHandler {
 
   private final PedSimCityApplet applet;
@@ -15,6 +17,9 @@ public class PedSimCityActionHandler {
     this.serverLauncher = serverLauncher;
   }
 
+  // -----------------------
+  // Run locally
+  // -----------------------
   public ActionListener runLocalListener() {
     return e -> {
       applet.setRunningOnServer(false);
@@ -22,16 +27,16 @@ public class PedSimCityActionHandler {
 
       Thread simThread = new Thread(() -> {
         try {
-          Pars.cityName = applet.getCityName();
-          Pars.jobs = Integer.parseInt(applet.getJobs());
-          TimePars.numberOfDays = Integer.parseInt(applet.getDays());
-          Pars.population = Integer.parseInt(applet.getPopulation());
-          Pars.percentagePopulationAgent = Double.parseDouble(applet.getPercentage());
-          Pars.setSimulationParameters();
+          // Collect and apply parameters
+          ParameterManager.applyFromApplet(applet);
+
+          // Finalize dependent values
+          pedsim.parameters.Pars.setSimulationParameters();
 
           applet.runSimulationLocal();
         } catch (Exception ex) {
           applet.appendLog("Error: " + ex.getMessage());
+          LoggerUtil.getLogger().severe("Error running local sim: " + ex.getMessage());
         }
       });
       applet.setSimulationThread(simThread);
@@ -39,17 +44,24 @@ public class PedSimCityActionHandler {
     };
   }
 
+
+  // -----------------------
+  // Run on server
+  // -----------------------
   public ActionListener runServerListener() {
     return e -> {
       applet.setRunningOnServer(true);
       prepareEndButton();
 
-      String argsString = ArgumentBuilder.buildArgsString(applet.getCityName(), applet.getDays(),
-          applet.getPopulation(), applet.getPercentage(), applet.getJobs());
+      // Collect parameters → build CLI args
+      String argsString = ParameterManager.buildArgsStringFromApplet(applet);
       serverLauncher.runOnServer(argsString, applet);
     };
   }
 
+  // -----------------------
+  // End simulation
+  // -----------------------
   public ActionListener endListener() {
     return e -> {
       if (applet.isRunningOnServer()) {
