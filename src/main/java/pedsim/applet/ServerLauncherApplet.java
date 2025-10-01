@@ -68,8 +68,8 @@ public class ServerLauncherApplet {
         + "find src/main/java -name '*.java' > sources.txt && "
         + "/usr/local/software/java/jdk-21.0.6/bin/javac -d bin -cp 'bin:lib/*' @sources.txt && "
         + "echo '>> running applet (headless)' && "
-        + "/usr/local/software/java/jdk-21.0.6/bin/java -cp 'bin:lib/*' " + mainClass + " "
-        + argsString;
+        + "/usr/local/software/java/jdk-21.0.6/bin/java " + "-cp 'bin:lib/*:src/main/resources' "
+        + mainClass + " --headless " + argsString;
 
     // Print the exact command into the applet log for debugging
     applet.appendLog("[SERVER][CMD] " + remoteCmd);
