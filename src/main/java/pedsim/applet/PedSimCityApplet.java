@@ -29,7 +29,6 @@ public class PedSimCityApplet extends Frame {
   private Button startButton;
   private Button runServerButton;
   private Button endButton;
-  private Button configButton;
   private TextField daysTextField;
   private TextField jobsTextField;
   private TextField populationTextField;
@@ -41,9 +40,6 @@ public class PedSimCityApplet extends Frame {
 
   private static final Logger logger = LoggerUtil.getLogger();
 
-  // -------------------
-  // Constructor (GUI setup)
-  // -------------------
   public PedSimCityApplet() {
     super("PedSimCity Applet");
     setLayout(null);
@@ -100,7 +96,7 @@ public class PedSimCityApplet extends Frame {
     endButton = new Button("End Simulation");
     endButton.setBackground(Color.PINK);
 
-    configButton = new Button("Server Settings");
+    Button configButton = new Button("Server Settings");
     configButton.setBounds(280, 280, 120, 40);
     configButton.setBackground(new Color(200, 200, 0));
     add(configButton);
@@ -127,9 +123,7 @@ public class PedSimCityApplet extends Frame {
     setVisible(true);
   }
 
-  // -------------------
-  // Simulation logic
-  // -------------------
+  // --- Simulation logic ---
   public void runSimulationLocal() throws Exception {
     importFiles();
     appendLog("Running ABM with " + Pars.numAgents + " agents for "
@@ -161,9 +155,7 @@ public class PedSimCityApplet extends Frame {
     cityName.validate();
   }
 
-  // -------------------
-  // Parameter collection
-  // -------------------
+  // --- Parameter collection ---
   public Map<String, String> collectParameters() {
     Map<String, String> params = new HashMap<>();
     params.put("cityName", getCityName());
@@ -174,16 +166,12 @@ public class PedSimCityApplet extends Frame {
     return params;
   }
 
-  // -------------------
-  // Logging
-  // -------------------
+  // --- Logging ---
   public void appendLog(String msg) {
     logArea.append(msg + "\n");
   }
 
-  // -------------------
-  // Getters/setters for handler
-  // -------------------
+  // --- Getters/setters for handler ---
   public String getCityName() {
     return cityName.getSelectedItem();
   }
@@ -232,44 +220,31 @@ public class PedSimCityApplet extends Frame {
     return simulationThread;
   }
 
-  // -------------------
-  // Main entry point
-  // -------------------
+  // --- Main entry point ---
   public static void main(String[] args) {
-    // Parse CLI arguments
-    Map<String, String> params = ArgumentBuilder.parseArgs(args);
+    PedSimCityApplet applet = new PedSimCityApplet();
+    applet.addWindowListener(new WindowAdapter() {
+      @Override
+      public void windowClosing(WindowEvent e) {
+        applet.dispose();
+      }
+    });
 
-    boolean headless = params.containsKey("headless");
-
-    if (headless) {
-      System.out.println("[SERVER] Running headless simulation...");
+    // If launched with CLI args (server / headless)
+    if (args.length > 0) {
+      Map<String, String> params = ArgumentBuilder.parseArgs(args);
       ParameterManager.setParameters(params);
+
+      // Force server mode to use bundled resources, not local paths
+      Pars.javaProject = false;
+      Pars.localPath = "";
+
+      System.out.println("[SERVER] Running headless simulation...");
       try {
-        // Prepare environment + run engine directly (no Frame)
-        pedsim.engine.Import importer = new pedsim.engine.Import();
-        importer.importFiles();
-
-        pedsim.engine.Environment.prepare();
-
-        pedsim.engine.Engine engine = new pedsim.engine.Engine();
-        for (int jobNr = 0; jobNr < pedsim.parameters.Pars.jobs; jobNr++) {
-          System.out.println("[SERVER] Executing Job: " + jobNr);
-          engine.executeJob(jobNr);
-        }
-        System.out.println("[SERVER] Simulation finished.");
+        applet.runSimulationLocal();
       } catch (Exception ex) {
         ex.printStackTrace();
       }
-    } else {
-      // GUI mode
-      PedSimCityApplet applet = new PedSimCityApplet();
-      applet.addWindowListener(new WindowAdapter() {
-        @Override
-        public void windowClosing(WindowEvent e) {
-          applet.dispose();
-        }
-      });
     }
   }
-
 }
