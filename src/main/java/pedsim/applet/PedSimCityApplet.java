@@ -236,23 +236,32 @@ public class PedSimCityApplet extends Frame {
   // Main entry point
   // -------------------
   public static void main(String[] args) {
+    // Parse CLI arguments
     Map<String, String> params = ArgumentBuilder.parseArgs(args);
-    ParameterManager.setParameters(params);
 
-    if (params.containsKey("headless")) {
-      // Server execution path: skip GUI, just run simulation
+    boolean headless = params.containsKey("headless");
+
+    if (headless) {
+      System.out.println("[SERVER] Running headless simulation...");
+      ParameterManager.setParameters(params);
       try {
-        System.out.println("[SERVER] Running headless simulation...");
-        PedSimCityApplet dummy = new PedSimCityApplet();
-        dummy.setVisible(false); // don't show GUI
-        dummy.runSimulationLocal();
-        System.exit(0);
+        // Prepare environment + run engine directly (no Frame)
+        pedsim.engine.Import importer = new pedsim.engine.Import();
+        importer.importFiles();
+
+        pedsim.engine.Environment.prepare();
+
+        pedsim.engine.Engine engine = new pedsim.engine.Engine();
+        for (int jobNr = 0; jobNr < pedsim.parameters.Pars.jobs; jobNr++) {
+          System.out.println("[SERVER] Executing Job: " + jobNr);
+          engine.executeJob(jobNr);
+        }
+        System.out.println("[SERVER] Simulation finished.");
       } catch (Exception ex) {
         ex.printStackTrace();
-        System.exit(1);
       }
     } else {
-      // Normal GUI mode
+      // GUI mode
       PedSimCityApplet applet = new PedSimCityApplet();
       applet.addWindowListener(new WindowAdapter() {
         @Override
@@ -262,4 +271,5 @@ public class PedSimCityApplet extends Frame {
       });
     }
   }
+
 }
