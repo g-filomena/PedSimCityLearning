@@ -223,23 +223,25 @@ public class PedSimCityApplet extends Frame {
   public static void main(String[] args) {
     boolean headless = false;
     for (String arg : args) {
-      if (arg.equals("--headless")) {
+      if ("--headless".equals(arg) || arg.startsWith("--headless=")) {
         headless = true;
         break;
       }
     }
 
     if (headless) {
-      // Headless mode → no GUI
+      System.out.println("[SERVER] Running headless simulation...");
       Map<String, String> params = ArgumentBuilder.parseArgs(args);
       ParameterManager.setParameters(params);
 
+      // force server mode (no local project paths)
       Pars.javaProject = false;
       Pars.localPath = "";
 
-      System.out.println("[SERVER] Running headless simulation...");
+      // finalize derived values like numAgents
+      Pars.setSimulationParameters();
+
       try {
-        // Directly run simulation without Frame/Applet
         Import importer = new Import();
         importer.importFiles();
         Environment.prepare();
@@ -252,9 +254,7 @@ public class PedSimCityApplet extends Frame {
       } catch (Exception ex) {
         ex.printStackTrace();
       }
-
     } else {
-      // Normal local GUI mode
       PedSimCityApplet applet = new PedSimCityApplet();
       applet.addWindowListener(new WindowAdapter() {
         @Override
@@ -264,4 +264,5 @@ public class PedSimCityApplet extends Frame {
       });
     }
   }
+
 }
