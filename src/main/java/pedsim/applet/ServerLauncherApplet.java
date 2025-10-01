@@ -4,6 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+/**
+ * Handles launching and stopping the simulation on a remote server via SSH.
+ */
 public class ServerLauncherApplet {
 
   private String sshPath = "C:\\Windows\\System32\\OpenSSH\\ssh.exe";
@@ -65,9 +68,11 @@ public class ServerLauncherApplet {
         + "find src/main/java -name '*.java' > sources.txt && "
         + "/usr/local/software/java/jdk-21.0.6/bin/javac -d bin -cp 'bin:lib/*' @sources.txt && "
         + "echo '>> running applet (headless)' && "
-        + "/usr/local/software/java/jdk-21.0.6/bin/java -cp 'bin:lib/*' " + mainClass
-        + " --headless " + argsString;
+        + "/usr/local/software/java/jdk-21.0.6/bin/java -cp 'bin:lib/*' " + mainClass + " "
+        + argsString;
 
+    // Print the exact command into the applet log for debugging
+    applet.appendLog("[SERVER][CMD] " + remoteCmd);
 
     try {
       ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, remoteCmd);
