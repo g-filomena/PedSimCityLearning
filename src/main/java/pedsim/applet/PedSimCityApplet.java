@@ -220,31 +220,48 @@ public class PedSimCityApplet extends Frame {
     return simulationThread;
   }
 
-  // --- Main entry point ---
   public static void main(String[] args) {
-    PedSimCityApplet applet = new PedSimCityApplet();
-    applet.addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosing(WindowEvent e) {
-        applet.dispose();
+    boolean headless = false;
+    for (String arg : args) {
+      if (arg.equals("--headless")) {
+        headless = true;
+        break;
       }
-    });
+    }
 
-    // If launched with CLI args (server / headless)
-    if (args.length > 0) {
+    if (headless) {
+      // Headless mode → no GUI
       Map<String, String> params = ArgumentBuilder.parseArgs(args);
       ParameterManager.setParameters(params);
 
-      // Force server mode to use bundled resources, not local paths
       Pars.javaProject = false;
       Pars.localPath = "";
 
       System.out.println("[SERVER] Running headless simulation...");
       try {
-        applet.runSimulationLocal();
+        // Directly run simulation without Frame/Applet
+        Import importer = new Import();
+        importer.importFiles();
+        Environment.prepare();
+        Engine engine = new Engine();
+        for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
+          System.out.println("[SERVER] Executing Job: " + jobNr);
+          engine.executeJob(jobNr);
+        }
+        System.out.println("[SERVER] Simulation finished.");
       } catch (Exception ex) {
         ex.printStackTrace();
       }
+
+    } else {
+      // Normal local GUI mode
+      PedSimCityApplet applet = new PedSimCityApplet();
+      applet.addWindowListener(new WindowAdapter() {
+        @Override
+        public void windowClosing(WindowEvent e) {
+          applet.dispose();
+        }
+      });
     }
   }
 }
