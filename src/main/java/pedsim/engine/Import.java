@@ -121,6 +121,6 @@ public class Import {
    * @throws Exception If an error occurs during the import process.
    */
   private static void handleImportError(String layerName, Exception e) {
-    logger.info(layerName);
+    logger.severe(layerName + " | " + e.getClass().getSimpleName() + ": " + e.getMessage());
   }
 }
