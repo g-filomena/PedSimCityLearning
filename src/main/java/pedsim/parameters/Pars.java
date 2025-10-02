@@ -31,11 +31,6 @@ public class Pars {
   // meters per step;
   public static double moveRate;
 
-  // for development/testing purposes only
-  public static boolean javaProject = true;
-  public static String localPath =
-      "C:/Users/gfilo/OneDrive - The University of Liverpool/Scripts/pedsimcityLearning/src/main/resources/";
-
   static String[] primary = {"primary", "primary_link"};
   static String[] secondary = {"secondary", "secondary_link"};
   static String[] tertiary = {"tertiary", "tertiary_link", "unclassified"};
