@@ -1,7 +1,9 @@
 package pedsim.applet;
 
 import java.awt.event.ActionListener;
+import pedsim.engine.PedSimCity;
 import pedsim.parameters.ParameterManager;
+import pedsim.parameters.Pars;
 import pedsim.utilities.LoggerUtil;
 
 /**
@@ -20,7 +22,6 @@ public class PedSimCityActionHandler {
   // -----------------------
   // Run locally
   // -----------------------
-
   public ActionListener runLocalListener() {
     return e -> {
       applet.setRunningOnServer(false);
@@ -30,14 +31,10 @@ public class PedSimCityActionHandler {
         try {
           // Collect parameters from GUI
           ParameterManager.applyFromApplet(applet);
-          // If you also want route panel values, call:
-          // ParameterManager.applyFromRoutePanel(routePanel);
-
           // Finalize dependent values
-
-
-          // Run the actual simulation
-          applet.runSimulation();
+          Pars.setSimulationParameters();
+          // Run the core simulation
+          PedSimCity.runSimulation();
         } catch (Exception ex) {
           applet.appendLog("Error: " + ex.getMessage());
           LoggerUtil.getLogger().severe("Error running local sim: " + ex.getMessage());
@@ -57,7 +54,7 @@ public class PedSimCityActionHandler {
       applet.setRunningOnServer(true);
       prepareEndButton();
 
-      // Collect parameters → build CLI args
+      // Collect parameters → build CLI args string
       String argsString = ParameterManager.toArgStringFromApplet(applet);
       serverLauncher.runOnServer(argsString, applet);
     };
@@ -68,12 +65,12 @@ public class PedSimCityActionHandler {
   // -----------------------
   public ActionListener endListener() {
     return e -> {
-      if (applet.isRunningOnServer())
+      if (applet.isRunningOnServer()) {
         serverLauncher.stopOnServer(applet);
-      else {
-        if (applet.getSimulationThread() != null && applet.getSimulationThread().isAlive())
+      } else {
+        if (applet.getSimulationThread() != null && applet.getSimulationThread().isAlive()) {
           System.exit(0);
-
+        }
       }
     };
   }
