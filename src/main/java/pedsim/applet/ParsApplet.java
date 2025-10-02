@@ -1,7 +1,6 @@
 package pedsim.applet;
 
 import java.awt.Button;
-import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Label;
 import java.awt.TextField;
@@ -23,7 +22,6 @@ public class ParsApplet extends Frame {
   private static final int X = 10;
   private int y = 50;
   private static final int Y_SPACE_BETWEEN = 30;
-  TextField localPathField = new TextField(null);
   ArrayList<TextField> doubleTextFields = new ArrayList<>();
   ArrayList<TextField> booleanTextFields = new ArrayList<>();
 
@@ -58,8 +56,6 @@ public class ParsApplet extends Frame {
     add(cityCentreField);
 
     y += Y_SPACE_BETWEEN;
-    addLocalPathlabel();
-    y += Y_SPACE_BETWEEN;
 
     // Apply Button
     Button applyButton = new Button("Apply");
@@ -67,7 +63,6 @@ public class ParsApplet extends Frame {
     applyButton.addActionListener(new ActionListener() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        adjustParameters();
         inputCityCentreRegions();
         closePanel();
       }
@@ -83,27 +78,6 @@ public class ParsApplet extends Frame {
         closePanel();
       }
     });
-  }
-
-  private void addLocalPathlabel() {
-
-    Label localPathLabel = new Label(
-        "Fill this field only with a local path, only if running as Java Project, not from JAR");
-    localPathLabel.setBounds(X, y, 450, 20);
-    localPathLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-    add(localPathLabel);
-    y += Y_SPACE_BETWEEN;
-
-    localPathLabel = new Label("e.g.: C:/Users/YourUser/Scripts/pedsimcity/src/main/resources/");
-    localPathLabel.setBounds(X, y - 10, 450, 20);
-    localPathLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-    add(localPathLabel);
-    y += Y_SPACE_BETWEEN;
-
-    localPathField.setBounds(X, y - 10, 600, 20);
-    localPathField.setText(Pars.localPath);
-    add(localPathField);
-    // localPathField.setText(null);
   }
 
   private void inputCityCentreRegions() {
@@ -156,17 +130,6 @@ public class ParsApplet extends Frame {
         System.exit(0);
       }
     });
-  }
-
-  /**
-   * Adjusts the simulation parameters based on the values entered in text fields. Parses the values
-   * and updates the corresponding parameters in the Parameters class.
-   */
-  private void adjustParameters() {
-    if (localPathField.getText() == null || localPathField.getText() == "") {
-      Pars.localPath = localPathField.getText();
-      Pars.javaProject = true;
-    }
   }
 
   /**
