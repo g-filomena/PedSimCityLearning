@@ -20,6 +20,7 @@ public class PedSimCityActionHandler {
   // -----------------------
   // Run locally
   // -----------------------
+
   public ActionListener runLocalListener() {
     return e -> {
       applet.setRunningOnServer(false);
@@ -27,23 +28,26 @@ public class PedSimCityActionHandler {
 
       Thread simThread = new Thread(() -> {
         try {
-          // Collect and apply parameters
+          // Collect parameters from GUI
           ParameterManager.applyFromApplet(applet);
+          // If you also want route panel values, call:
+          // ParameterManager.applyFromRoutePanel(routePanel);
 
           // Finalize dependent values
-          pedsim.parameters.Pars.setSimulationParameters();
 
-          applet.runSimulationLocal();
+
+          // Run the actual simulation
+          applet.runSimulation();
         } catch (Exception ex) {
           applet.appendLog("Error: " + ex.getMessage());
           LoggerUtil.getLogger().severe("Error running local sim: " + ex.getMessage());
         }
       });
+
       applet.setSimulationThread(simThread);
       simThread.start();
     };
   }
-
 
   // -----------------------
   // Run on server
@@ -54,7 +58,7 @@ public class PedSimCityActionHandler {
       prepareEndButton();
 
       // Collect parameters → build CLI args
-      String argsString = ParameterManager.buildArgsStringFromApplet(applet);
+      String argsString = ParameterManager.toArgStringFromApplet(applet);
       serverLauncher.runOnServer(argsString, applet);
     };
   }
@@ -64,20 +68,20 @@ public class PedSimCityActionHandler {
   // -----------------------
   public ActionListener endListener() {
     return e -> {
-      if (applet.isRunningOnServer()) {
+      if (applet.isRunningOnServer())
         serverLauncher.stopOnServer(applet);
-      } else {
-        if (applet.getSimulationThread() != null && applet.getSimulationThread().isAlive()) {
+      else {
+        if (applet.getSimulationThread() != null && applet.getSimulationThread().isAlive())
           System.exit(0);
-        }
+
       }
     };
   }
 
   private void prepareEndButton() {
-    applet.getEndButton().setBounds(10, 330, 120, 50);
-    applet.add(applet.getEndButton());
-    applet.getStartButton().setVisible(false);
-    applet.getRunServerButton().setVisible(false);
+    applet.endButton.setBounds(10, 330, 120, 50);
+    applet.add(applet.endButton);
+    applet.startButton.setVisible(false);
+    applet.runServerButton.setVisible(false);
   }
 }
