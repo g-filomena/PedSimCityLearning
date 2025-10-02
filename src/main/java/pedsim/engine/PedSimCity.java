@@ -148,6 +148,7 @@ public class PedSimCity extends SimState {
     agents.setMBR(MBR);
   }
 
+
   /**
    * Completes the simulation by saving results and performing cleanup operations.
    */
