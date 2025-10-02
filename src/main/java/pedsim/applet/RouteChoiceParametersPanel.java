@@ -131,15 +131,15 @@ public class RouteChoiceParametersPanel extends Frame {
    * @param x The x-coordinate for the field.
    * @param y The y-coordinate for the field.
    */
-  private void addBooleanField(String fieldName, boolean defaultValue, int x, int y) {
-    Label label = new Label(fieldName + ":");
-    TextField textField = new TextField(Boolean.toString(defaultValue));
-    label.setBounds(x, y, 600, 20);
-    textField.setBounds(x + 600, y, 100, 20);
-    add(label);
-    add(textField);
-    booleanTextFields.add(textField);
-  }
+  // private void addBooleanField(String fieldName, boolean defaultValue, int x, int y) {
+  // Label label = new Label(fieldName + ":");
+  // TextField textField = new TextField(Boolean.toString(defaultValue));
+  // label.setBounds(x, y, 600, 20);
+  // textField.setBounds(x + 600, y, 100, 20);
+  // add(label);
+  // add(textField);
+  // booleanTextFields.add(textField);
+  // }
 
   public static void main(String[] args) {
     RouteChoiceParametersPanel frame = new RouteChoiceParametersPanel();
@@ -186,6 +186,27 @@ public class RouteChoiceParametersPanel extends Frame {
     setVisible(false);
     dispose();
   }
+
+  public String getDoubleFieldValue(int index) {
+    return doubleTextFields.get(index).getText();
+  }
+
+  // --- Add this method for doubles ---
+  public String getDoubleParam(int idx) {
+    if (idx < 0 || idx >= doubleTextFields.size()) {
+      throw new IllegalArgumentException("Invalid doubleTextField index: " + idx);
+    }
+    return doubleTextFields.get(idx).getText();
+  }
+
+  // --- If you also plan booleans, add this ---
+  public String getBooleanParam(int idx) {
+    if (idx < 0 || idx >= booleanTextFields.size()) {
+      throw new IllegalArgumentException("Invalid booleanTextField index: " + idx);
+    }
+    return booleanTextFields.get(idx).getText();
+  }
+
 
   // /**
   // * Retrieves the value of a text field based on its y-coordinate.
