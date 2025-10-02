@@ -6,8 +6,8 @@ import pedsim.applet.PedSimCityApplet;
 import pedsim.applet.RouteChoiceParametersPanel;
 
 /**
- * Central manager for simulation parameters. Provides a unified way to set parameters from CLI
- * args, GUI panels, or applets.
+ * Central manager for simulation parameters. Provides a unified way to set parameters from: - CLI
+ * args - GUI applet - RouteChoice parameters panel
  */
 public class ParameterManager {
 
@@ -51,38 +51,54 @@ public class ParameterManager {
     paramMap.put("cityCentreRegions", v -> {
       String[] tokens = v.split(",");
       Integer[] ids = new Integer[tokens.length];
-      for (int i = 0; i < tokens.length; i++) {
+      for (int i = 0; i < tokens.length; i++)
         ids[i] = Integer.parseInt(tokens[i].trim());
-      }
       RouteChoicePars.cityCentreRegionsID = ids;
     });
 
     // --- Headless flag (no-op) ---
     paramMap.put("headless", v -> {
-      // used only as a marker, no effect here
-    });
+      /* marker only */ });
   }
 
-  /** Sets a parameter by key */
+  // --------------------------
+  // Parameter application
+  // --------------------------
+
   public static void setParameter(String key, String value) {
     ParameterSetter setter = paramMap.get(key);
-    if (setter != null) {
+    if (setter != null)
       setter.apply(value);
-    } else {
+    else
       System.err.println("Unknown parameter: " + key);
-    }
   }
 
-  /** Utility for applying multiple parameters at once */
   public static void setParameters(Map<String, String> params) {
-    for (Map.Entry<String, String> entry : params.entrySet()) {
+    for (Map.Entry<String, String> entry : params.entrySet())
       setParameter(entry.getKey(), entry.getValue());
-    }
   }
 
-  // ----------------------------------------------------
-  // New helpers to apply from Applet/GUI directly
-  // ----------------------------------------------------
+  // --------------------------
+  // Parse CLI args
+  // --------------------------
+
+  public static Map<String, String> parseArgs(String[] args) {
+    Map<String, String> params = new HashMap<>();
+    for (String arg : args) {
+      if (arg.startsWith("--")) {
+        String[] parts = arg.substring(2).split("=", 2);
+        if (parts.length == 2)
+          params.put(parts[0], parts[1]);
+        else
+          params.put(parts[0], "true"); // for flags like --headless
+      }
+    }
+    return withDefaults(params);
+  }
+
+  // --------------------------
+  // Apply from GUI
+  // --------------------------
 
   public static void applyFromApplet(PedSimCityApplet applet) {
     setParameter("cityName", applet.getCityName());
@@ -93,80 +109,98 @@ public class ParameterManager {
   }
 
   public static void applyFromRoutePanel(RouteChoiceParametersPanel panel) {
-    setParameter("distanceNodeLandmark", Double.toString(RouteChoicePars.distanceNodeLandmark));
-    setParameter("distanceAnchors", Double.toString(RouteChoicePars.distanceAnchors));
-    setParameter("nrAnchors", Integer.toString(RouteChoicePars.nrAnchors));
-    setParameter("threshold3dVisibility", Double.toString(RouteChoicePars.threshold3dVisibility));
-    setParameter("globalLandmarkThresholdCommunity",
-        Double.toString(RouteChoicePars.globalLandmarkThresholdCommunity));
-    setParameter("localLandmarkThresholdCommunity",
-        Double.toString(RouteChoicePars.localLandmarkThresholdCommunity));
-    setParameter("salientNodesPercentile", Double.toString(RouteChoicePars.salientNodesPercentile));
-    setParameter("wayfindingEasinessThresholdCommunity",
-        Double.toString(RouteChoicePars.wayfindingEasinessThresholdCommunity));
-    setParameter("globalLandmarknessWeightDistanceCommunity",
-        Double.toString(RouteChoicePars.globalLandmarknessWeightDistanceCommunity));
-    setParameter("globalLandmarknessWeightAngularCommunity",
-        Double.toString(RouteChoicePars.globalLandmarknessWeightAngularCommunity));
-    setParameter("regionNavActivationThreshold",
-        Double.toString(RouteChoicePars.regionNavActivationThreshold));
-    setParameter("wayfindingEasinessThresholdRegionsCommunity",
-        Double.toString(RouteChoicePars.wayfindingEasinessThresholdRegionsCommunity));
+    setParameter("distanceNodeLandmark", panel.getDoubleFieldValue(0));
+    setParameter("distanceAnchors", panel.getDoubleFieldValue(1));
+    setParameter("nrAnchors", panel.getDoubleFieldValue(2));
+    setParameter("threshold3dVisibility", panel.getDoubleFieldValue(3));
+    setParameter("globalLandmarkThresholdCommunity", panel.getDoubleFieldValue(4));
+    setParameter("localLandmarkThresholdCommunity", panel.getDoubleFieldValue(5));
+    setParameter("salientNodesPercentile", panel.getDoubleFieldValue(6));
+    setParameter("wayfindingEasinessThresholdCommunity", panel.getDoubleFieldValue(7));
+    setParameter("globalLandmarknessWeightDistanceCommunity", panel.getDoubleFieldValue(8));
+    setParameter("globalLandmarknessWeightAngularCommunity", panel.getDoubleFieldValue(9));
+    setParameter("regionNavActivationThreshold", panel.getDoubleFieldValue(10));
+    setParameter("wayfindingEasinessThresholdRegionsCommunity", panel.getDoubleFieldValue(11));
   }
 
-  /**
-   * Builds a CLI args string (for server launch) from current applet values
-   */
-  /**
-   * Builds a CLI args string (for server launch) from current applet values
-   */
-  public static String buildArgsStringFromApplet(pedsim.applet.PedSimCityApplet applet) {
-    StringBuilder sb = new StringBuilder("--headless");
+  // --------------------------
+  // CLI string builders
+  // --------------------------
 
-    // --- Core parameters from applet ---
-    sb.append(" --cityName=").append(applet.getCityName());
-    sb.append(" --days=").append(applet.getDays());
-    sb.append(" --population=").append(applet.getPopulation());
-    sb.append(" --percentage=").append(applet.getPercentage());
-    sb.append(" --jobs=").append(applet.getJobs());
+  public static String toArgString(Map<String, String> params) {
+    StringBuilder sb = new StringBuilder();
+    for (Map.Entry<String, String> entry : params.entrySet()) {
+      sb.append("--").append(entry.getKey());
+      if (!"true".equals(entry.getValue()))
+        sb.append("=").append(entry.getValue());
+      sb.append(" ");
+    }
+    return sb.toString().trim();
+  }
 
-    // --- RouteChoicePars extras ---
-    sb.append(" --distanceNodeLandmark=").append(RouteChoicePars.distanceNodeLandmark);
-    sb.append(" --distanceAnchors=").append(RouteChoicePars.distanceAnchors);
-    sb.append(" --nrAnchors=").append(RouteChoicePars.nrAnchors);
-    sb.append(" --threshold3dVisibility=").append(RouteChoicePars.threshold3dVisibility);
+  public static String toArgStringFromApplet(PedSimCityApplet applet) {
+    Map<String, String> params = new HashMap<>();
+    params.put("headless", "true");
+    params.put("cityName", applet.getCityName());
+    params.put("days", applet.getDays());
+    params.put("population", applet.getPopulation());
+    params.put("percentage", applet.getPercentage());
+    params.put("jobs", applet.getJobs());
+    return toArgString(withDefaults(params));
+  }
 
+  // --------------------------
+  // Defaults merger
+  // --------------------------
+
+  private static Map<String, String> withDefaults(Map<String, String> params) {
+    Map<String, String> all = new java.util.LinkedHashMap<>(params);
+
+    // --- Core ---
+    all.putIfAbsent("cityName", Pars.cityName);
+    all.putIfAbsent("population", String.valueOf(Pars.population));
+    all.putIfAbsent("percentage", String.valueOf(Pars.percentagePopulationAgent));
+    all.putIfAbsent("jobs", String.valueOf(Pars.jobs));
+
+    // --- Time ---
+    all.putIfAbsent("days", String.valueOf(TimePars.numberOfDays));
+
+    // --- RouteChoice ---
+    all.putIfAbsent("distanceNodeLandmark", String.valueOf(RouteChoicePars.distanceNodeLandmark));
+    all.putIfAbsent("distanceAnchors", String.valueOf(RouteChoicePars.distanceAnchors));
+    all.putIfAbsent("nrAnchors", String.valueOf(RouteChoicePars.nrAnchors));
+    all.putIfAbsent("threshold3dVisibility", String.valueOf(RouteChoicePars.threshold3dVisibility));
+    all.putIfAbsent("globalLandmarkThresholdCommunity",
+        String.valueOf(RouteChoicePars.globalLandmarkThresholdCommunity));
+    all.putIfAbsent("localLandmarkThresholdCommunity",
+        String.valueOf(RouteChoicePars.localLandmarkThresholdCommunity));
+    all.putIfAbsent("salientNodesPercentile",
+        String.valueOf(RouteChoicePars.salientNodesPercentile));
+    all.putIfAbsent("wayfindingEasinessThresholdCommunity",
+        String.valueOf(RouteChoicePars.wayfindingEasinessThresholdCommunity));
+    all.putIfAbsent("globalLandmarknessWeightDistanceCommunity",
+        String.valueOf(RouteChoicePars.globalLandmarknessWeightDistanceCommunity));
+    all.putIfAbsent("globalLandmarknessWeightAngularCommunity",
+        String.valueOf(RouteChoicePars.globalLandmarknessWeightAngularCommunity));
+    all.putIfAbsent("regionNavActivationThreshold",
+        String.valueOf(RouteChoicePars.regionNavActivationThreshold));
+    all.putIfAbsent("wayfindingEasinessThresholdRegionsCommunity",
+        String.valueOf(RouteChoicePars.wayfindingEasinessThresholdRegionsCommunity));
+
+    // --- Arrays ---
     if (RouteChoicePars.cityCentreRegionsID != null
         && RouteChoicePars.cityCentreRegionsID.length > 0) {
-      sb.append(" --cityCentreRegions=");
+      StringBuilder sb = new StringBuilder();
       for (int i = 0; i < RouteChoicePars.cityCentreRegionsID.length; i++) {
         sb.append(RouteChoicePars.cityCentreRegionsID[i]);
-        if (i < RouteChoicePars.cityCentreRegionsID.length - 1) {
+        if (i < RouteChoicePars.cityCentreRegionsID.length - 1)
           sb.append(",");
-        }
       }
+      all.putIfAbsent("cityCentreRegions", sb.toString());
     }
 
-    // --- Other optional RouteChoice parameters ---
-    sb.append(" --globalLandmarkThresholdCommunity=")
-        .append(RouteChoicePars.globalLandmarkThresholdCommunity);
-    sb.append(" --localLandmarkThresholdCommunity=")
-        .append(RouteChoicePars.localLandmarkThresholdCommunity);
-    sb.append(" --salientNodesPercentile=").append(RouteChoicePars.salientNodesPercentile);
-    sb.append(" --wayfindingEasinessThresholdCommunity=")
-        .append(RouteChoicePars.wayfindingEasinessThresholdCommunity);
-    sb.append(" --globalLandmarknessWeightDistanceCommunity=")
-        .append(RouteChoicePars.globalLandmarknessWeightDistanceCommunity);
-    sb.append(" --globalLandmarknessWeightAngularCommunity=")
-        .append(RouteChoicePars.globalLandmarknessWeightAngularCommunity);
-    sb.append(" --regionNavActivationThreshold=")
-        .append(RouteChoicePars.regionNavActivationThreshold);
-    sb.append(" --wayfindingEasinessThresholdRegionsCommunity=")
-        .append(RouteChoicePars.wayfindingEasinessThresholdRegionsCommunity);
-
-    return sb.toString();
+    return all;
   }
-
 
   @FunctionalInterface
   private interface ParameterSetter {
