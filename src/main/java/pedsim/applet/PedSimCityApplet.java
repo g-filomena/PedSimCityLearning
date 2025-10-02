@@ -9,15 +9,12 @@ import java.awt.TextArea;
 import java.awt.TextField;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 import pedsim.engine.Engine;
 import pedsim.engine.Environment;
 import pedsim.engine.Import;
 import pedsim.parameters.ParameterManager;
 import pedsim.parameters.Pars;
-import pedsim.utilities.ArgumentBuilder;
 import pedsim.utilities.LoggerUtil;
 import pedsim.utilities.StringEnum;
 
@@ -26,9 +23,10 @@ public class PedSimCityApplet extends Frame {
   private static final long serialVersionUID = 1L;
 
   private Choice cityName;
-  private Button startButton;
-  private Button runServerButton;
-  private Button endButton;
+  Button startButton;
+  Button runServerButton;
+  private Button configButton;
+  Button endButton;
   private TextField daysTextField;
   private TextField jobsTextField;
   private TextField populationTextField;
@@ -37,8 +35,6 @@ public class PedSimCityApplet extends Frame {
 
   private boolean runningOnServer = false;
   private Thread simulationThread;
-
-  private static final Logger logger = LoggerUtil.getLogger();
 
   public PedSimCityApplet() {
     super("PedSimCity Applet");
@@ -96,7 +92,7 @@ public class PedSimCityApplet extends Frame {
     endButton = new Button("End Simulation");
     endButton.setBackground(Color.PINK);
 
-    Button configButton = new Button("Server Settings");
+    configButton = new Button("Server Settings");
     configButton.setBounds(280, 280, 120, 40);
     configButton.setBackground(new Color(200, 200, 0));
     add(configButton);
@@ -116,37 +112,38 @@ public class PedSimCityApplet extends Frame {
     configButton.addActionListener(e -> serverLauncher.openConfigPanel());
     endButton.addActionListener(handler.endListener());
 
-    // Redirect logger output
+    // Redirect logger output to both console + TextArea
     LoggerUtil.redirectToTextArea(logArea);
 
     setSize(500, 520);
     setVisible(true);
   }
 
-  // --- Simulation logic ---
-  public void runSimulationLocal() throws Exception {
-    importFiles();
-    appendLog("Running ABM with " + Pars.numAgents + " agents for "
+  /**
+   * Initiates the simulation with current parameters.
+   */
+  void startSimulation() throws Exception {
+    ParameterManager.applyFromApplet(this);
+    Pars.setSimulationParameters();
+    runSimulation();
+  }
+
+  // --- Core simulation logic (independent of GUI) ---
+  void runSimulation() throws Exception {
+    Import importer = new Import();
+    importer.importFiles();
+    LoggerUtil.getLogger().info("Running ABM with " + Pars.numAgents + " agents for "
         + StringEnum.Learner.values().length + " scenarios.");
 
     Environment.prepare();
-    appendLog("Environment prepared. Starting simulation...");
+    LoggerUtil.getLogger().info("Environment prepared. Starting simulation...");
 
     Engine engine = new Engine();
     for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
-      appendLog("Executing Job: " + jobNr);
+      LoggerUtil.getLogger().info("Executing Job: " + jobNr);
       engine.executeJob(jobNr);
     }
-    appendLog("Simulation finished.");
-  }
-
-  private void importFiles() {
-    try {
-      Import importer = new Import();
-      importer.importFiles();
-    } catch (Exception e) {
-      appendLog("Error importing files: " + e.getMessage());
-    }
+    LoggerUtil.getLogger().info("Simulation finished.");
   }
 
   private void updateCityNameOptions() {
@@ -155,23 +152,45 @@ public class PedSimCityApplet extends Frame {
     cityName.validate();
   }
 
-  // --- Parameter collection ---
-  public Map<String, String> collectParameters() {
-    Map<String, String> params = new HashMap<>();
-    params.put("cityName", getCityName());
-    params.put("days", getDays());
-    params.put("population", getPopulation());
-    params.put("percentage", getPercentage());
-    params.put("jobs", getJobs());
-    return params;
-  }
-
-  // --- Logging ---
+  // --- Logging utility ---
   public void appendLog(String msg) {
-    logArea.append(msg + "\n");
+    LoggerUtil.getLogger().info(msg);
+    if (logArea != null) {
+      logArea.append(msg + "\n");
+    }
   }
 
-  // --- Getters/setters for handler ---
+  // --- Main entry ---
+  public static void main(String[] args) throws Exception {
+    boolean headless = false;
+    for (String arg : args) {
+      if ("--headless".equals(arg) || arg.startsWith("--headless=")) {
+        headless = true;
+        break;
+      }
+    }
+
+    Map<String, String> params = pedsim.parameters.ParameterManager.parseArgs(args);
+    ParameterManager.setParameters(params);
+
+    if (headless) {
+      LoggerUtil.getLogger().info("[SERVER] Running headless simulation...");
+      new PedSimCityApplet().runSimulation();
+    } else {
+      PedSimCityApplet applet = new PedSimCityApplet();
+      applet.addWindowListener(new WindowAdapter() {
+        @Override
+        public void windowClosing(WindowEvent e) {
+          applet.dispose();
+        }
+      });
+    }
+  }
+
+  // =====================================================
+  // Getters & Setters
+  // =====================================================
+
   public String getCityName() {
     return cityName.getSelectedItem();
   }
@@ -192,18 +211,6 @@ public class PedSimCityApplet extends Frame {
     return jobsTextField.getText();
   }
 
-  public Button getStartButton() {
-    return startButton;
-  }
-
-  public Button getRunServerButton() {
-    return runServerButton;
-  }
-
-  public Button getEndButton() {
-    return endButton;
-  }
-
   public void setRunningOnServer(boolean value) {
     this.runningOnServer = value;
   }
@@ -219,50 +226,4 @@ public class PedSimCityApplet extends Frame {
   public Thread getSimulationThread() {
     return simulationThread;
   }
-
-  public static void main(String[] args) {
-    boolean headless = false;
-    for (String arg : args) {
-      if ("--headless".equals(arg) || arg.startsWith("--headless=")) {
-        headless = true;
-        break;
-      }
-    }
-
-    if (headless) {
-      System.out.println("[SERVER] Running headless simulation...");
-      Map<String, String> params = ArgumentBuilder.parseArgs(args);
-      ParameterManager.setParameters(params);
-
-      // force server mode (no local project paths)
-      Pars.javaProject = false;
-      Pars.localPath = "";
-
-      // finalize derived values like numAgents
-      Pars.setSimulationParameters();
-
-      try {
-        Import importer = new Import();
-        importer.importFiles();
-        Environment.prepare();
-        Engine engine = new Engine();
-        for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
-          System.out.println("[SERVER] Executing Job: " + jobNr);
-          engine.executeJob(jobNr);
-        }
-        System.out.println("[SERVER] Simulation finished.");
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
-    } else {
-      PedSimCityApplet applet = new PedSimCityApplet();
-      applet.addWindowListener(new WindowAdapter() {
-        @Override
-        public void windowClosing(WindowEvent e) {
-          applet.dispose();
-        }
-      });
-    }
-  }
-
 }
