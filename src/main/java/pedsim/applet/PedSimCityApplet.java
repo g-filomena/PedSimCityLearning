@@ -10,13 +10,9 @@ import java.awt.TextField;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.Map;
-import pedsim.engine.Engine;
-import pedsim.engine.Environment;
-import pedsim.engine.Import;
+import pedsim.engine.PedSimCity;
 import pedsim.parameters.ParameterManager;
-import pedsim.parameters.Pars;
 import pedsim.utilities.LoggerUtil;
-import pedsim.utilities.StringEnum;
 
 public class PedSimCityApplet extends Frame {
 
@@ -119,33 +115,6 @@ public class PedSimCityApplet extends Frame {
     setVisible(true);
   }
 
-  /**
-   * Initiates the simulation with current parameters.
-   */
-  void startSimulation() throws Exception {
-    ParameterManager.applyFromApplet(this);
-    Pars.setSimulationParameters();
-    runSimulation();
-  }
-
-  // --- Core simulation logic (independent of GUI) ---
-  void runSimulation() throws Exception {
-    Import importer = new Import();
-    importer.importFiles();
-    LoggerUtil.getLogger().info("Running ABM with " + Pars.numAgents + " agents for "
-        + StringEnum.Learner.values().length + " scenarios.");
-
-    Environment.prepare();
-    LoggerUtil.getLogger().info("Environment prepared. Starting simulation...");
-
-    Engine engine = new Engine();
-    for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
-      LoggerUtil.getLogger().info("Executing Job: " + jobNr);
-      engine.executeJob(jobNr);
-    }
-    LoggerUtil.getLogger().info("Simulation finished.");
-  }
-
   private void updateCityNameOptions() {
     cityName.removeAll();
     cityName.add("Muenster");
@@ -158,27 +127,6 @@ public class PedSimCityApplet extends Frame {
     if (logArea != null) {
       logArea.append(msg + "\n");
     }
-  }
-
-  // ---------------------------------------------------
-  // Shared simulation core (used by GUI + headless)
-  // ---------------------------------------------------
-  public static void runSimulationCore() throws Exception {
-    Pars.setSimulationParameters();
-    Import importer = new Import();
-    importer.importFiles();
-    LoggerUtil.getLogger().info("Running ABM with " + Pars.numAgents + " agents for "
-        + StringEnum.Learner.values().length + " scenarios.");
-
-    Environment.prepare();
-    LoggerUtil.getLogger().info("Environment prepared. Starting simulation...");
-
-    Engine engine = new Engine();
-    for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
-      LoggerUtil.getLogger().info("Executing Job: " + jobNr);
-      engine.executeJob(jobNr);
-    }
-    LoggerUtil.getLogger().info("Simulation finished.");
   }
 
   // ---------------------------------------------------
@@ -198,7 +146,7 @@ public class PedSimCityApplet extends Frame {
 
     if (headless) {
       LoggerUtil.getLogger().info("[SERVER] Running headless simulation...");
-      runSimulationCore(); // ✅ No GUI
+      PedSimCity.runSimulation(); // ✅ No GUI
     } else {
       PedSimCityApplet applet = new PedSimCityApplet();
       applet.addWindowListener(new WindowAdapter() {
@@ -209,7 +157,6 @@ public class PedSimCityApplet extends Frame {
       });
     }
   }
-
 
   // =====================================================
   // Getters & Setters
