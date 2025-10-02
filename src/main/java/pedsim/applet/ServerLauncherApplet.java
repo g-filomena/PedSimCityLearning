@@ -6,7 +6,7 @@ import java.io.InputStreamReader;
 import pedsim.utilities.LoggerUtil;
 
 /**
- * Handles launching and stopping the simulation on a remote server via SSH.
+ * Handles launching and stopping the simulation on a remote server via SSH, with PID tracking.
  */
 public class ServerLauncherApplet {
 
@@ -17,6 +17,8 @@ public class ServerLauncherApplet {
 
   private String projectDir = "/mnt/home/gabriele/PedSimCityLearning";
   private String mainClass = "pedsim.applet.PedSimCityApplet";
+
+  private String lastPid = null; // PID of last launched server process
 
   // --- Getters & setters ---
   public String getSshPath() {
@@ -69,40 +71,33 @@ public class ServerLauncherApplet {
         + "find src/main/java -name '*.java' > sources.txt && "
         + "/usr/local/software/java/jdk-21.0.6/bin/javac -d bin -cp 'bin:lib/*' @sources.txt && "
         + "echo '>> running applet (headless)' && "
-        + "/usr/local/software/java/jdk-21.0.6/bin/java " + "-cp 'bin:lib/*:src/main/resources' "
-        + mainClass + " --headless " + argsString;
+        // Run simulation in background, capture its PID
+        + "(/usr/local/software/java/jdk-21.0.6/bin/java -cp 'bin:lib/*:src/main/resources' "
+        + mainClass + " --headless " + argsString + " & echo $!)";
 
-    // Print the exact command into the applet log for debugging
-    applet.appendLog("[SERVER][CMD] " + remoteCmd);
-
-    // Print the exact command into the applet log for debugging
     applet.appendLog("[SERVER][CMD] " + remoteCmd);
 
     try {
       ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, remoteCmd);
+      pb.redirectErrorStream(true);
       Process proc = pb.start();
 
-      // stdout
       new Thread(() -> {
         try (BufferedReader reader =
             new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
           String line;
-          while ((line = reader.readLine()) != null)
-            applet.appendLog("[SERVER] " + line);
+          while ((line = reader.readLine()) != null) {
+            // Detect PID: only digits in a line
+            if (lastPid == null && line.matches("\\d+")) {
+              lastPid = line.trim();
+              applet.appendLog("[SERVER] Captured PID: " + lastPid);
+              LoggerUtil.getLogger().info("[SERVER] Captured PID: " + lastPid);
+            } else {
+              applet.appendLog("[SERVER] " + line);
+            }
+          }
         } catch (Exception ex) {
-          LoggerUtil.getLogger().warning("Error reading server logs: " + ex.getMessage());
-        }
-      }).start();
-
-      // stderr
-      new Thread(() -> {
-        try (BufferedReader reader =
-            new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
-          String line;
-          while ((line = reader.readLine()) != null)
-            applet.appendLog("[SERVER][ERR] " + line);
-        } catch (Exception ex) {
-          LoggerUtil.getLogger().warning("Error reading server errors: " + ex.getMessage());
+          LoggerUtil.getLogger().warning("Error reading server output: " + ex.getMessage());
         }
       }).start();
 
@@ -112,14 +107,19 @@ public class ServerLauncherApplet {
     }
   }
 
-
-  // --- Stop remote simulation ---
+  // --- Stop remote simulation using PID ---
   public void stopOnServer(PedSimCityApplet applet) {
-    String killCmd = "pkill -f " + mainClass;
+    if (lastPid == null) {
+      applet.appendLog("[SERVER] No PID recorded, cannot kill process safely.");
+      return;
+    }
+    String killCmd = "kill -9 " + lastPid;
     try {
       ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, killCmd);
       pb.start();
-      applet.appendLog("[SERVER] Sent kill command.");
+      applet.appendLog("[SERVER] Sent kill command for PID " + lastPid);
+      LoggerUtil.getLogger().info("[SERVER] Killed process PID=" + lastPid);
+      lastPid = null; // reset
     } catch (IOException e) {
       applet.appendLog("SSH Error: " + e.getMessage());
     }
