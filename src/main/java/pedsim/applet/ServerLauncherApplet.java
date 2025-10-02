@@ -3,6 +3,7 @@ package pedsim.applet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import pedsim.utilities.LoggerUtil;
 
 /**
  * Handles launching and stopping the simulation on a remote server via SSH.
@@ -74,6 +75,9 @@ public class ServerLauncherApplet {
     // Print the exact command into the applet log for debugging
     applet.appendLog("[SERVER][CMD] " + remoteCmd);
 
+    // Print the exact command into the applet log for debugging
+    applet.appendLog("[SERVER][CMD] " + remoteCmd);
+
     try {
       ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, remoteCmd);
       Process proc = pb.start();
@@ -83,11 +87,10 @@ public class ServerLauncherApplet {
         try (BufferedReader reader =
             new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
           String line;
-          while ((line = reader.readLine()) != null) {
+          while ((line = reader.readLine()) != null)
             applet.appendLog("[SERVER] " + line);
-          }
         } catch (Exception ex) {
-          applet.appendLog("Error reading server logs: " + ex.getMessage());
+          LoggerUtil.getLogger().warning("Error reading server logs: " + ex.getMessage());
         }
       }).start();
 
@@ -96,18 +99,19 @@ public class ServerLauncherApplet {
         try (BufferedReader reader =
             new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
           String line;
-          while ((line = reader.readLine()) != null) {
+          while ((line = reader.readLine()) != null)
             applet.appendLog("[SERVER][ERR] " + line);
-          }
         } catch (Exception ex) {
-          applet.appendLog("Error reading server errors: " + ex.getMessage());
+          LoggerUtil.getLogger().warning("Error reading server errors: " + ex.getMessage());
         }
       }).start();
 
     } catch (IOException e) {
+      LoggerUtil.getLogger().severe("SSH Error: " + e.getMessage());
       applet.appendLog("SSH Error: " + e.getMessage());
     }
   }
+
 
   // --- Stop remote simulation ---
   public void stopOnServer(PedSimCityApplet applet) {
