@@ -160,7 +160,30 @@ public class PedSimCityApplet extends Frame {
     }
   }
 
-  // --- Main entry ---
+  // ---------------------------------------------------
+  // Shared simulation core (used by GUI + headless)
+  // ---------------------------------------------------
+  public static void runSimulationCore() throws Exception {
+    Pars.setSimulationParameters();
+    Import importer = new Import();
+    importer.importFiles();
+    LoggerUtil.getLogger().info("Running ABM with " + Pars.numAgents + " agents for "
+        + StringEnum.Learner.values().length + " scenarios.");
+
+    Environment.prepare();
+    LoggerUtil.getLogger().info("Environment prepared. Starting simulation...");
+
+    Engine engine = new Engine();
+    for (int jobNr = 0; jobNr < Pars.jobs; jobNr++) {
+      LoggerUtil.getLogger().info("Executing Job: " + jobNr);
+      engine.executeJob(jobNr);
+    }
+    LoggerUtil.getLogger().info("Simulation finished.");
+  }
+
+  // ---------------------------------------------------
+  // Main entrypoint
+  // ---------------------------------------------------
   public static void main(String[] args) throws Exception {
     boolean headless = false;
     for (String arg : args) {
@@ -175,7 +198,7 @@ public class PedSimCityApplet extends Frame {
 
     if (headless) {
       LoggerUtil.getLogger().info("[SERVER] Running headless simulation...");
-      new PedSimCityApplet().runSimulation();
+      runSimulationCore(); // ✅ No GUI
     } else {
       PedSimCityApplet applet = new PedSimCityApplet();
       applet.addWindowListener(new WindowAdapter() {
@@ -186,6 +209,7 @@ public class PedSimCityApplet extends Frame {
       });
     }
   }
+
 
   // =====================================================
   // Getters & Setters
