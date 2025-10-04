@@ -9,219 +9,119 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import pedsim.parameters.ParameterManager;
 import pedsim.parameters.RouteChoicePars;
 
 /**
- * A graphical user interface panel for configuring various simulation RouteChoiceParameters.
+ * GUI panel for configuring RouteChoicePars.
  */
 public class RouteChoiceParametersPanel extends Frame {
-  private static final long serialVersionUID = 1L;
-  private static final int X = 10;
-  private int Y = 50;
-  private static final int Y_SPACE_BETWEEN = 30;
-  TextField localPathField = new TextField(null);
-  ArrayList<TextField> doubleTextFields = new ArrayList<>();
-  ArrayList<TextField> booleanTextFields = new ArrayList<>();
+	private static final long serialVersionUID = 1L;
+	private static final int X = 10;
+	private int Y = 50;
+	private static final int Y_SPACE_BETWEEN = 30;
 
-  String[] doubleStrings = {"Max distance of a candidate Local Landmark from a Node (m)",
-      "Max distance of a Global Landmark (as anchor) from a Node",
-      "Max Number of Anchors to be identified for each Destination",
-      "Min distance Between a node and the agent destination for considering 3D Visibility",
-      "Min score for a building to be considered a Global Landmark [0.0 - 0.95]",
-      "Min score for a building to be considered a Local Landmark [0.0 - 0.95]",
-      "Percentile for choosing Salient Nodes (on centrality values) [0.0 - 1.0]",
-      "Wayfinding Easiness Threshold above which local landmarks are not identified [0.0 - 1.0]",
-      "Weight Global Landmarkness in combination with Distance Edge Cost [0.0 - 1.0]",
-      "Weight Global Landmarkness in combination with Angular Edge Cost [0.0 - 1.0]",
-      "Minimum distance necessary to activate Region-based navigation (m)",
-      "Wayfinding Easiness Threshold above which local landmarks are not identified within regions"};
+	// parameterName -> TextField
+	public Map<String, TextField> doubleFields = new LinkedHashMap<>();
+	public Map<String, TextField> booleanFields = new LinkedHashMap<>();
+	public TextField localPathField = new TextField(null);
 
-  Double defaultValues[] = {RouteChoicePars.distanceNodeLandmark, RouteChoicePars.distanceAnchors,
-      Double.valueOf(RouteChoicePars.nrAnchors), RouteChoicePars.threshold3dVisibility,
-      RouteChoicePars.globalLandmarkThresholdCommunity,
-      RouteChoicePars.localLandmarkThresholdCommunity, RouteChoicePars.salientNodesPercentile,
-      RouteChoicePars.wayfindingEasinessThresholdCommunity,
-      RouteChoicePars.globalLandmarknessWeightDistanceCommunity,
-      RouteChoicePars.globalLandmarknessWeightAngularCommunity,
-      RouteChoicePars.regionNavActivationThreshold,
-      RouteChoicePars.wayfindingEasinessThresholdRegionsCommunity};
+	String[][] doubleParamDefs = {
+			{ "distanceNodeLandmark", "Max distance of a candidate Local Landmark from a Node (m)" },
+			{ "distanceAnchors", "Max distance of a Global Landmark (as anchor) from a Node" },
+			{ "nrAnchors", "Max Number of Anchors to be identified for each Destination" },
+			{ "threshold3dVisibility",
+					"Min distance Between a node and the agent destination for considering 3D Visibility" },
+			{ "globalLandmarkThresholdCommunity",
+					"Min score for a building to be considered a Global Landmark [0.0 - 0.95]" },
+			{ "localLandmarkThresholdCommunity",
+					"Min score for a building to be considered a Local Landmark [0.0 - 0.95]" },
+			{ "salientNodesPercentile", "Percentile for choosing Salient Nodes [0.0 - 1.0]" },
+			{ "wayfindingEasinessThresholdCommunity", "Wayfinding Easiness Threshold [0.0 - 1.0]" },
+			{ "globalLandmarknessWeightDistanceCommunity",
+					"Weight Global Landmarkness with Distance Cost [0.0 - 1.0]" },
+			{ "globalLandmarknessWeightAngularCommunity", "Weight Global Landmarkness with Angular Cost [0.0 - 1.0]" },
+			{ "regionNavActivationThreshold", "Minimum distance necessary to activate Region-based navigation (m)" },
+			{ "wayfindingEasinessThresholdRegionsCommunity", "Wayfinding Easiness Threshold in regions" } };
 
-  /**
-   * Constructs the Parameters Panel.
-   */
-  public RouteChoiceParametersPanel() {
-    super("Parameters Panel");
-    setLayout(null);
+	Double[] defaults = { RouteChoicePars.distanceNodeLandmark, RouteChoicePars.distanceAnchors,
+			(double) RouteChoicePars.nrAnchors, RouteChoicePars.threshold3dVisibility,
+			RouteChoicePars.globalLandmarkThresholdCommunity, RouteChoicePars.localLandmarkThresholdCommunity,
+			RouteChoicePars.salientNodesPercentile, RouteChoicePars.wayfindingEasinessThresholdCommunity,
+			RouteChoicePars.globalLandmarknessWeightDistanceCommunity,
+			RouteChoicePars.globalLandmarknessWeightAngularCommunity, RouteChoicePars.regionNavActivationThreshold,
+			RouteChoicePars.wayfindingEasinessThresholdRegionsCommunity };
 
-    for (String string : doubleStrings) {
-      Double defaultValue = defaultValues[Arrays.asList(doubleStrings).indexOf(string)];
-      addDoubleField(string, defaultValue, X, Y);
-      Y += Y_SPACE_BETWEEN;
-    }
+	public RouteChoiceParametersPanel() {
+		super("RouteChoice Parameters Panel");
+		setLayout(null);
 
-    Label localPathLabel = new Label(
-        "Fill this field only with a local path, only if running as Java Project, not from JAR");
-    localPathLabel.setBounds(10, 480, 450, 20);
-    localPathLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-    add(localPathLabel);
-    localPathLabel = new Label("e.g.: C:/Users/YourUser/Scripts/pedsimcity/src/main/resources/");
-    localPathLabel.setBounds(10, 500, 350, 20);
-    localPathLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-    add(localPathLabel);
+		for (int i = 0; i < doubleParamDefs.length; i++) {
+			String key = doubleParamDefs[i][0];
+			String label = doubleParamDefs[i][1];
+			double defaultValue = defaults[i];
 
-    localPathField.setBounds(360, 500, 350, 20);
-    add(localPathField);
+			TextField tf = addDoubleField(label, defaultValue, X, Y);
+			doubleFields.put(key, tf);
+			Y += Y_SPACE_BETWEEN;
+		}
 
-    Button applyButton = new Button("Apply");
-    applyButton.setBounds(10, 550, 80, 30);
-    applyButton.addActionListener(new ActionListener() {
-      @Override
-      public void actionPerformed(ActionEvent e) {
-        adjustParameters();
-        closePanel();
-      }
-    });
-    add(applyButton);
+		Label localPathLabel = new Label(
+				"Fill only if running as Java Project, not from JAR (e.g.: C:/Users/you/.../resources/)");
+		localPathLabel.setBounds(10, 480, 700, 20);
+		localPathLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+		add(localPathLabel);
 
-    setSize(800, 600);
-    setVisible(true);
+		localPathField.setBounds(360, 500, 350, 20);
+		add(localPathField);
 
-    addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosing(WindowEvent e) {
-        closePanel();
-      }
-    });
-  }
+		Button applyButton = new Button("Apply");
+		applyButton.setBounds(10, 550, 80, 30);
+		applyButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				ParameterManager.applyAll(RouteChoicePars.class, doubleFields, booleanFields);
+				closePanel();
+			}
+		});
+		add(applyButton);
 
-  /**
-   * Adds double-interpreter field to the panel for adjusting simulation RouteChoiceParameters.
-   *
-   * @param fieldName The name of the parameter.
-   * @param defaultValue The default value for the parameter.
-   * @param x The x-coordinate for the field.
-   * @param y The y-coordinate for the field.
-   */
-  private void addDoubleField(String fieldName, double defaultValue, int x, int y) {
-    Label label = new Label(fieldName + ":");
-    TextField textField = new TextField(Double.toString(defaultValue));
-    label.setBounds(x, y, 600, 20);
-    textField.setBounds(x + 600, y, 100, 20);
-    add(label);
-    add(textField);
-    doubleTextFields.add(textField);
-  }
+		setSize(800, 600);
+		setVisible(true);
 
-  /**
-   * Adds a boolean-interpreter field to the panel for adjusting simulation RouteChoiceParameters.
-   *
-   * @param fieldName The name of the parameter.
-   * @param defaultValue The default value for the parameter.
-   * @param x The x-coordinate for the field.
-   * @param y The y-coordinate for the field.
-   */
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				closePanel();
+			}
+		});
+	}
 
-  /**
-   * Adds a boolean-interpreter field to the panel for adjusting simulation RouteChoiceParameters.
-   *
-   * @param fieldName The name of the parameter.
-   * @param defaultValue The default value for the parameter.
-   * @param x The x-coordinate for the field.
-   * @param y The y-coordinate for the field.
-   */
-  // private void addBooleanField(String fieldName, boolean defaultValue, int x, int y) {
-  // Label label = new Label(fieldName + ":");
-  // TextField textField = new TextField(Boolean.toString(defaultValue));
-  // label.setBounds(x, y, 600, 20);
-  // textField.setBounds(x + 600, y, 100, 20);
-  // add(label);
-  // add(textField);
-  // booleanTextFields.add(textField);
-  // }
+	private TextField addDoubleField(String fieldName, double defaultValue, int x, int y) {
+		Label label = new Label(fieldName + ":");
+		TextField textField = new TextField(Double.toString(defaultValue));
+		label.setBounds(x, y, 600, 20);
+		textField.setBounds(x + 600, y, 100, 20);
+		add(label);
+		add(textField);
+		return textField;
+	}
 
-  public static void main(String[] args) {
-    RouteChoiceParametersPanel frame = new RouteChoiceParametersPanel();
-    frame.addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosing(WindowEvent e) {
-        System.exit(0);
-      }
-    });
-  }
+	public static void main(String[] args) {
+		RouteChoiceParametersPanel frame = new RouteChoiceParametersPanel();
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				System.exit(0);
+			}
+		});
+	}
 
-  /**
-   * Adjusts the simulation parameters based on the values entered in text fields. Parses the values
-   * and updates the corresponding parameters in the Parameters class.
-   */
-  private void adjustParameters() {
-
-    RouteChoicePars.distanceNodeLandmark = Double.parseDouble(doubleTextFields.get(0).getText());
-    RouteChoicePars.distanceAnchors = Double.parseDouble(doubleTextFields.get(1).getText());
-    RouteChoicePars.nrAnchors = (int) Double.parseDouble(doubleTextFields.get(2).getText());
-    RouteChoicePars.threshold3dVisibility = Double.parseDouble(doubleTextFields.get(3).getText());
-    RouteChoicePars.globalLandmarkThresholdCommunity =
-        Double.min(Double.parseDouble(doubleTextFields.get(4).getText()), 0.95);
-    RouteChoicePars.localLandmarkThresholdCommunity =
-        Double.min(Double.parseDouble(doubleTextFields.get(5).getText()), 0.95);
-    RouteChoicePars.salientNodesPercentile =
-        Double.min(Double.parseDouble(doubleTextFields.get(6).getText()), 1.0);
-    RouteChoicePars.wayfindingEasinessThresholdCommunity =
-        Double.min(Double.parseDouble(doubleTextFields.get(7).getText()), 1.0);
-    RouteChoicePars.globalLandmarknessWeightDistanceCommunity =
-        Double.min(Double.parseDouble(doubleTextFields.get(8).getText()), 1.0);
-    RouteChoicePars.globalLandmarknessWeightAngularCommunity =
-        Double.min(Double.parseDouble(doubleTextFields.get(9).getText()), 1.0);
-    RouteChoicePars.regionNavActivationThreshold =
-        Double.parseDouble(doubleTextFields.get(10).getText());
-    RouteChoicePars.wayfindingEasinessThresholdRegionsCommunity =
-        Double.max(Double.parseDouble(doubleTextFields.get(11).getText()), 1.0);
-  }
-
-  /**
-   * Closes the Panel.
-   */
-  private void closePanel() {
-    setVisible(false);
-    dispose();
-  }
-
-  public String getDoubleFieldValue(int index) {
-    return doubleTextFields.get(index).getText();
-  }
-
-  // --- Add this method for doubles ---
-  public String getDoubleParam(int idx) {
-    if (idx < 0 || idx >= doubleTextFields.size()) {
-      throw new IllegalArgumentException("Invalid doubleTextField index: " + idx);
-    }
-    return doubleTextFields.get(idx).getText();
-  }
-
-  // --- If you also plan booleans, add this ---
-  public String getBooleanParam(int idx) {
-    if (idx < 0 || idx >= booleanTextFields.size()) {
-      throw new IllegalArgumentException("Invalid booleanTextField index: " + idx);
-    }
-    return booleanTextFields.get(idx).getText();
-  }
-
-
-  // /**
-  // * Retrieves the value of a text field based on its y-coordinate.
-  // *
-  // * @param y The y-coordinate of the text field.
-  // * @return The text entered in the text field or an empty string if not found.
-  // */
-  // private String getTextFieldValue(int y) {
-  // TextField textField = null;
-  // for (int i = 0; i < getComponentCount(); i++) {
-  // if (getComponent(i) instanceof TextField && getComponent(i).getY() == y) {
-  // textField = (TextField) getComponent(i);
-  // break;
-  // }
-  // }
-  // return textField != null ? textField.getText() : "";
-  // }
+	private void closePanel() {
+		setVisible(false);
+		dispose();
+	}
 }
