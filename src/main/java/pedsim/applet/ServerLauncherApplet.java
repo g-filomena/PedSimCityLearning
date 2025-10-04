@@ -3,130 +3,170 @@ package pedsim.applet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+
+import pedsim.parameters.ParameterManager;
 import pedsim.utilities.LoggerUtil;
 
 /**
- * Handles launching and stopping the simulation on a remote server via SSH, with PID tracking.
+ * Handles launching and stopping the simulation on a remote server via SSH.
  */
 public class ServerLauncherApplet {
 
-  private String sshPath = "C:\\Windows\\System32\\OpenSSH\\ssh.exe";
-  private String keyPath =
-      "C:\\Users\\gfilo\\OneDrive - The University of Liverpool\\Scripts\\pedsimcityLearning\\id_ed25519";
-  private String server = "gabriele@gdsl1.liv.ac.uk";
+	// --- SSH / remote env config (override via setters) ---
+	private String sshPath = "C:\\Windows\\System32\\OpenSSH\\ssh.exe";
+	private String keyPath = "C:\\Users\\gfilo\\OneDrive - The University of Liverpool\\Scripts\\pedsimcityLearning\\id_ed25519";
+	private String server = "gabriele@gdsl1.liv.ac.uk";
 
-  private String projectDir = "/mnt/home/gabriele/PedSimCityLearning";
-  private String mainClass = "pedsim.applet.PedSimCityApplet";
+	// Remote project layout
+	private String projectDir = "/mnt/home/gabriele/PedSimCityLearning";
+	private String mainClass = "pedsim.PedSimCity";
 
-  private String lastPid = null; // PID of last launched server process
+	// Remote Java toolchain
+	private String javaBinDir = "/usr/local/software/java/jdk-21.0.6/bin"; // dir con java/javac
+	private String classpath = "bin:lib/*:src/main/resources"; // usa ':' (Linux)
 
-  // --- Getters & setters ---
-  public String getSshPath() {
-    return sshPath;
-  }
+	private String lastPid = null; // PID dell'ultimo processo lanciato
 
-  public void setSshPath(String sshPath) {
-    this.sshPath = sshPath;
-  }
+	// -------------------------
+	// Getters & setters
+	// -------------------------
+	public String getSshPath() {
+		return sshPath;
+	}
 
-  public String getKeyPath() {
-    return keyPath;
-  }
+	public void setSshPath(String sshPath) {
+		this.sshPath = sshPath;
+	}
 
-  public void setKeyPath(String keyPath) {
-    this.keyPath = keyPath;
-  }
+	public String getKeyPath() {
+		return keyPath;
+	}
 
-  public String getServer() {
-    return server;
-  }
+	public void setKeyPath(String keyPath) {
+		this.keyPath = keyPath;
+	}
 
-  public void setServer(String server) {
-    this.server = server;
-  }
+	public String getServer() {
+		return server;
+	}
 
-  public String getProjectDir() {
-    return projectDir;
-  }
+	public void setServer(String server) {
+		this.server = server;
+	}
 
-  public void setProjectDir(String projectDir) {
-    this.projectDir = projectDir;
-  }
+	public String getProjectDir() {
+		return projectDir;
+	}
 
-  public String getMainClass() {
-    return mainClass;
-  }
+	public void setProjectDir(String projectDir) {
+		this.projectDir = projectDir;
+	}
 
-  public void setMainClass(String mainClass) {
-    this.mainClass = mainClass;
-  }
+	public String getMainClass() {
+		return mainClass;
+	}
 
-  // --- Run on server ---
-  public void runOnServer(String argsString, PedSimCityApplet applet) {
-    String remoteCmd = "echo '>> Checking Java version' && "
-        + "/usr/local/software/java/jdk-21.0.6/bin/java -version && "
-        + "/usr/local/software/java/jdk-21.0.6/bin/javac -version && " + "cd " + projectDir + " && "
-        + "echo '>> pulling repo' && git pull && "
-        + "echo '>> compiling sources' && mkdir -p bin && "
-        + "find src/main/java -name '*.java' > sources.txt && "
-        + "/usr/local/software/java/jdk-21.0.6/bin/javac -d bin -cp 'bin:lib/*' @sources.txt && "
-        + "echo '>> running applet (headless)' && "
-        // Run simulation in background, capture its PID
-        + "(/usr/local/software/java/jdk-21.0.6/bin/java -cp 'bin:lib/*:src/main/resources' "
-        + mainClass + " --headless " + argsString + " & echo $!)";
+	public void setMainClass(String mainClass) {
+		this.mainClass = mainClass;
+	}
 
-    applet.appendLog("[SERVER][CMD] " + remoteCmd);
+	public String getJavaBinDir() {
+		return javaBinDir;
+	}
 
-    try {
-      ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, remoteCmd);
-      pb.redirectErrorStream(true);
-      Process proc = pb.start();
+	public void setJavaBinDir(String javaBinDir) {
+		this.javaBinDir = javaBinDir;
+	}
 
-      new Thread(() -> {
-        try (BufferedReader reader =
-            new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-          String line;
-          while ((line = reader.readLine()) != null) {
-            // Detect PID: only digits in a line
-            if (lastPid == null && line.matches("\\d+")) {
-              lastPid = line.trim();
-              applet.appendLog("[SERVER] Captured PID: " + lastPid);
-              LoggerUtil.getLogger().info("[SERVER] Captured PID: " + lastPid);
-            } else {
-              applet.appendLog("[SERVER] " + line);
-            }
-          }
-        } catch (Exception ex) {
-          LoggerUtil.getLogger().warning("Error reading server output: " + ex.getMessage());
-        }
-      }).start();
+	public String getClasspath() {
+		return classpath;
+	}
 
-    } catch (IOException e) {
-      LoggerUtil.getLogger().severe("SSH Error: " + e.getMessage());
-      applet.appendLog("SSH Error: " + e.getMessage());
-    }
-  }
+	public void setClasspath(String classpath) {
+		this.classpath = classpath;
+	}
 
-  // --- Stop remote simulation using PID ---
-  public void stopOnServer(PedSimCityApplet applet) {
-    if (lastPid == null) {
-      applet.appendLog("[SERVER] No PID recorded, cannot kill process safely.");
-      return;
-    }
-    String killCmd = "kill -9 " + lastPid;
-    try {
-      ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, killCmd);
-      pb.start();
-      applet.appendLog("[SERVER] Sent kill command for PID " + lastPid);
-      LoggerUtil.getLogger().info("[SERVER] Killed process PID=" + lastPid);
-      lastPid = null; // reset
-    } catch (IOException e) {
-      applet.appendLog("SSH Error: " + e.getMessage());
-    }
-  }
+	public String getLastPid() {
+		return lastPid;
+	}
 
-  // --- Open configuration panel ---
-  public void openConfigPanel() {
-    new ServerConfigPanel(this);
-  }
+	// -------------------------
+	// Public API
+	// -------------------------
+
+	/** Run simulation remotely via SSH */
+	public void runOnServer(PedSimCityApplet applet) {
+
+		String fullArgs = ParameterManager.collectParametersForServerRun(applet);
+		String remoteCmd = buildRemoteCommand(fullArgs);
+
+		applet.appendLog("[SERVER][CMD] " + remoteCmd);
+
+		try {
+			ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, remoteCmd);
+			pb.redirectErrorStream(true); // stderr -> stdout
+			Process proc = pb.start();
+
+			// stream output + PID
+			new Thread(() -> {
+				try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+					String line;
+					while ((line = reader.readLine()) != null) {
+						if (line.matches("\\d+")) {
+							lastPid = line.trim();
+							applet.appendLog("[SERVER] PID: " + lastPid);
+						} else {
+							applet.appendLog("[SERVER] " + line);
+						}
+					}
+				} catch (Exception ex) {
+					LoggerUtil.getLogger().warning("Error reading server output: " + ex.getMessage());
+				}
+			}).start();
+
+		} catch (IOException e) {
+			LoggerUtil.getLogger().severe("SSH Error: " + e.getMessage());
+			applet.appendLog("SSH Error: " + e.getMessage());
+		}
+	}
+
+	/** Stop remote simulation (by PID if known, otherwise by mainClass) */
+	public void stopOnServer(PedSimCityApplet applet) {
+		String killCmd = lastPid != null ? "kill " + lastPid : "pkill -f " + mainClass;
+		try {
+			ProcessBuilder pb = new ProcessBuilder(sshPath, "-i", keyPath, server, killCmd);
+			pb.start();
+			applet.appendLog("[SERVER] Sent kill command (" + killCmd + ")");
+		} catch (IOException e) {
+			applet.appendLog("SSH Error: " + e.getMessage());
+		}
+	}
+
+	/** Open the server configuration dialog */
+	public void openConfigPanel() {
+		new ServerConfigPanel(this);
+	}
+
+	// -------------------------
+	// Internals
+	// -------------------------
+
+	/**
+	 * Build the full remote command chain (check JDK, pull, compile, run, echo PID)
+	 */
+	private String buildRemoteCommand(String fullArgs) {
+		String java = javaBinDir + "/java";
+		String javac = javaBinDir + "/javac";
+
+		return "echo '>> Checking Java version' && " + java + " -version && " + javac + " -version && " + "cd "
+				+ projectDir + " && " + "echo '>> pulling repo' && git pull && "
+				+ "echo '>> compiling sources' && mkdir -p bin && "
+				+ "find src/main/java -name '*.java' > sources.txt && " + javac
+				+ " -d bin -cp 'bin:lib/*' @sources.txt && " + "echo '>> running simulation' && " + java
+				// ---- JVM tuning per sfruttare Xeon + 512GB RAM ----
+				+ " -XX:+UseNUMA" + " -XX:+UseParallelGC" + " -Xmx256G"
+				// ---- classpath + main class ----
+				+ " -cp '" + classpath + "' " + mainClass + " " + fullArgs + " & echo $!";
+	}
+
 }
