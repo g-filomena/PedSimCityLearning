@@ -163,10 +163,9 @@ public class ServerLauncherApplet {
 				+ "echo '>> compiling sources' && mkdir -p bin && "
 				+ "find src/main/java -name '*.java' > sources.txt && " + javac
 				+ " -d bin -cp 'bin:lib/*' @sources.txt && " + "echo '>> running simulation' && " + java
-				// ---- JVM tuning per sfruttare Xeon + 512GB RAM ----
-				+ " -XX:+UseNUMA" + " -XX:+UseParallelGC" + " -Xmx256G"
-				// ---- classpath + main class ----
-				+ " -cp '" + classpath + "' " + mainClass + " " + fullArgs + " & echo $!";
+				+ " -XX:+UseNUMA -XX:+UseParallelGC -Xmx256G " + "-cp '" + classpath + "' " + mainClass + " "
+				+ fullArgs;
+
 	}
 
 }
